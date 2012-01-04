@@ -1,6 +1,143 @@
-2010-09-12  Andrey Mukhin <a.mukhin77@gmail.com>
-  * Released v0.21b.  Banners' additional options 
-  patchset had been applied.
+2012-01-04  Simson Garfinkel  <simsong@mncrnpsedu.local>
+
+	* configure.ac: incremented version counter to beta2
+
+	* src/main.cpp (main): fixed option parsing bug.
+
+2012-01-03  Simson Garfinkel  <simsong@mncrnpsedu.local>
+
+	* src/tcpip.cpp (do_strip_nonprint): removed; do_strip_nonprint is now embedded in the caller, and is now thread-safe.
+
+	* src/util.cpp (check_malloc): removed
+
+	* src/tcpip.cpp (tcpip::store_packet): flow_state renamed tcpip (because it is).
+
+	* src/flow.h (class flow_state): first is now called tstart and appears in the flow_t.
+	(class flow_addr): renamed flow_t to flow_addr; it's the flow address.
+	(class flow_t): created this class which has additional per-flow information
+	(class flow_addr): moved vlan to flow_t from flow_addr
+
+2012-01-01  Simson Garfinkel  <simsong@Mucha.local>
+
+	* src/tcpflow.h (struct): flow_t renamed to be the flow class.
+	(class ipaddr): created class for IP addresses
+	(class flow_state_struct): created class from struct
+
+	* src/main.cpp (print_usage): -X added for XML output.
+
+2011-12-29  Simson Garfinkel  <simsong@Mucha.local>
+
+	* src/main.cpp (main): changed bytes_per_flow from int to uint64_t
+	progname is now a global.
+
+	added support for named semaphores to lock output between invocations.
+
+	* src/util.cpp: removed cvsid
+
+	* src/tcpip.cpp: removed cvsid
+
+	* src/datalink.cpp: removed cvsid
+
+	* src/flow.cpp: removed cvsid
+
+	* Makefile.am (EXTRA_DIST): added m4/ax_pthread.m4 to EXTRA_DIST
+
+	* configure.ac: increased version number to 1.0.7
+
+	* src/main.cpp (main): added -B option to force binary output.
+
+	* doc/tcpflow.1: corrected typo in -c/-C which crept it.
+
+2011-12-23  Simson Garfinkel  <simsong@Mucha.local>
+
+	* src/util.cpp: removed copy_argv(); replaced with a simple std::string manipulation.
+	(flow_filename): modified to work with outdir
+
+	* src/tcpip.cpp: renamed from tcpip.c to tcpip.cpp
+
+	* src/main.cpp: renamed from main.c to main.cpp;
+
+	* src/util.cpp: renamed util.c; changed most "char *" to "const char *"
+
+	* src/flow.cpp: renamed flow.c to flow.cpp
+
+2011-12-04  Simson Garfinkel  <simsong@Alphonse-Mucha.local>
+
+
+	* configure.ac: increased version counter to 1.0.6
+
+	* src/tcpflow.h (flow_state_struct): added bytes_printed counter
+
+	* src/tcpip.c (print_packet): modified to respect bytes_per_flow
+
+	* configure.ac: increased version counter to 1.0.5
+
+	* src/sysdep.h: added #ifndef for ETHERTYPE_VLAN for Oracle Enterprise Linux.
+
+2011-11-24  Simson Garfinkel  <simsong@it006834.ern.nps.edu>
+
+	* configure.ac: increased version counter to 1.0.4
+
+2011-10-13  Simson Garfinkel  <simsong@alphonse-mucha.home>
+
+	* src/main.c (main): removed prepending of (ip or ip6 or vlan) from user expressions. We now just use what the user provided.
+
+2011-09-30  Simson Garfinkel  <simsong@alphonse-mucha.home>
+
+	* configure.ac: incremented version counter to 1.0.2 and re-released.
+
+2011-09-20  Simson Garfinkel  <simsong@alphonse-mucha>
+
+	* src/flow.c (open_file): replaced FGETPOS(flow_state->fp, &(flow_state->pos)) with ftell()
+
+	* src/tcpip.c (store_packet): FSETPOS replaced with fseek (it's better now than in 1999)
+
+2011-09-20  Simson Garfinkel  <simsong@Alphonse-Mucha.local>
+
+	* src/util.c: applied ipv6 patches
+
+	* src/tcpip.c: applied ipv6 patches
+
+	* src/tcpflow.h: applied ipv6 patches
+
+	* src/sysdep.h: applied ipv6 patches
+
+	* src/main.c: applied ipv6 patches
+
+	* src/datalink.c: applied ipv6 patches
+
+	* configure.ac: applied ipv6 patches.
+
+	* src/sysdep.h: removed standards.h and added sys/cdefs.h.
+
+2011-04-14  Simson Garfinkel  <simsong@Magneto.local>
+
+	* Makefile.am (EXTRA_DIST): added TODO.txt
+
+2011-03-12  Simson Garfinkel  <simsong@imac3.home>
+
+	* doc/tcpflow.1.in: updated doc to reflect new author and distribution point.
+
+	* src/main.c (print_usage): removed  "by Jeremy Elson <jelson@circlemud.org>" from usage.
+
+	* src/util.c (flow_filename): vlan changed from [42] to --42 to avoid some shell issues.
+
+	* Applied debian patch 20_fix-usage, which fixed the usage statement.
+
+2011-02-27  Simson Garfinkel  <simsong@Silver-Surfer.local>
+
+	* manually applied debian patch 10_extra-opts, which improves color rendering and passes the state structure, rather than forcing it to be re-calculated.
+
+2008-10-06  Simson Garfinkel  <simsong@Silver-Surfer.local>
+
+	* src/flow.c (flow_same): created a flow_same() function to return true if two flows are the same (because we will be adding additional information to the flow)
+	(close_file): modified so that flows are timestamped with the time of the closing
+
+	* src/tcpflow.h: reimplemented portable_signal to return void, rather than RETSIGTYPE, since RETSIGTYPE hasn't been used for at least 15 years.
+
+	* src/sysdep.h: added #include <net/if_var.h> before #include <net/if.h>
+
+	* configure.ac: rewrote to remove patches for circa 2002 Linux bugs. Fixed prerequisite header for net/if.h
 
 2003-08-07  Jeremy Elson  <jelson@circlemud.org>
 	* Released v0.21.  Sticking to my strict schedule of releasing at

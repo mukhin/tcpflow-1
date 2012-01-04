@@ -1,146 +1,272 @@
-## Process this file with autoconf to produce a configure script.
-## The simpler way is to run ./autogen.sh.
+#                                               -*- Autoconf -*- 
+# Process this file with autoconf to produce a configure script. 
+# Order is largely irrevellant, although it must start with AC_INIT and end with AC_OUTPUT 
+# See http://autotoolset.sourceforge.net/tutorial.html 
+# and http://www.openismus.com/documents/linux/automake/automake.shtml 
 
-# TODO: Put checks in this order:
-# 1. initialization and options processing
-# 2. programs
-# 3. libraries
-# 4. header files
-# 5. types
-# 6. structures
-# 7. compiler characteristics
-# 8. functions, global variables
-# 9. system services
-
-# make sure we're interpreted by some minimal autoconf
-AC_PREREQ(2.57)
-
-AC_INIT(tcpflow, 0.22-pre, jelson@circlemud.org)
-
-# The argument here is just something that should be in the current directory
-# (for sanity checking)
-AC_CONFIG_SRCDIR(src/tcpflow.h)
+AC_INIT(TCPFLOW, 1.1.0-beta2, bugs@afflib.org)
+AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile doc/Makefile])
+AC_CONFIG_FILES([doc/tcpflow.1])
+AC_CONFIG_FILES([tcpflow.spec])
+AC_CONFIG_HEADER([src/config.h])
 AM_INIT_AUTOMAKE
-AM_CONFIG_HEADER(src/conf.h)
+AM_MAINTAINER_MODE
 
-# Populate $host_os, $host_cpu, etc.
-AC_CANONICAL_HOST
+AC_CONFIG_MACRO_DIR([m4])
 
-AC_LANG(C)
-
-# Checks for programs.
+# Programs we will be using
 AC_PROG_CC
-AM_CONDITIONAL(GCC, test "$GCC" = yes)   # let the Makefile know if we're gcc
+AC_PROG_CXX
+AC_PROG_INSTALL
 
-# Check headers
-AC_HEADER_STDC
 
-AC_CHECK_HEADERS([sys/resource.h sys/types.h unistd.h signal.h])
-AC_CHECK_HEADERS([sys/socket.h netinet/tcp.h netinet/in_systm.h netinet/in.h])
+################################################################
+# pcap support. A bit more involved than normal due to the error message
+#
+AC_CHECK_LIB(pcap, pcap_lookupdev, , [
+	AC_MSG_ERROR([
+Can't find the pcap library (libpcap.a); install the pcap and/or pcap-dev library.
+Please execute this command:
 
-# On FreeBSD, test for netinet/ip.h will fail unless netinet/in.h is included first.
-AC_CHECK_HEADERS([netinet/ip.h], [], [], [AC_INCLUDES_DEFAULT
-  #ifdef HAVE_NETINET_IN_H
-  # include <netinet/in.h>
-  #endif
-])
+  UBUNTU: sudo apt-get install libpcap-dev
+  DEBIAN: sudo apt-get install libpcap-dev
+  FEDORA: sudo yum install libpcap-devel
 
-# On FreeBSD, test for net/if.h will fail unless sys/socket.h is included first.
-AC_CHECK_HEADERS([net/if.h], [], [],[AC_INCLUDES_DEFAULT
-  #ifdef HAVE_SYS_SOCKET_H
-  # include <sys/socket.h>
-  #endif
-])
+If your libpcap is installed in a non-standard location, you will 
+need to use the --with-pcap=directory to specify where your pcap is located.
 
-# On FreeBSD, test for netinet/if_ether.h will fail unless sys/socket.h and netinet/in.h are included first.
-AC_CHECK_HEADERS([netinet/if_ether.h], [], [],[AC_INCLUDES_DEFAULT
-  #ifdef HAVE_SYS_SOCKET_H
-  # include <sys/socket.h>
-  #endif
-  #ifdef HAVE_NETINET_IN_H
-  # include <netinet/in.h>
-  #endif
-])
+When installing libpcap from sources, do both 'make install' and 'make install-incl'
+])])
 
-AC_CHECK_HEADERS(linux/if_ether.h)
 
-# These are the types to check. We look for them in either stdint.h,
-# sys/types.h, or inttypes.h, all of which are part of the default-includes.
-# TODO(asd): type checking is obsolete. Fix it.
-AC_CHECK_TYPE(u_int32_t, unsigned long)
-AC_CHECK_TYPE(u_int16_t, unsigned short)
-AC_CHECK_TYPE(u_int8_t, unsigned char)
-AC_CHECK_TYPE(u_char, unsigned char)
+################################################################
+## See if we are running on mingw
+# http://osdir.com/ml/gnu.mingw.devel/2003-09/msg00040.html
+# Note: Windows 95 WINVER=0x400
+# Windows 98 WINVER=0x400  _WIN32_WINDOWS=0x0410
+# Windows Me WINVER=0x400  _WIN32_WINDOWS=0x0490
+# Windows NT 4.0 WINVER=0x0400  _WIN32_WINNT=0x0400
+# Windows NT 4.0 SP3 WINVER=0x0400 _WIN32_WINNT=0x0403
+# Windows 2000 WINVER=0x500 _WIN32_WINNT=0x0500
+# Windows XP WINVER=0x501 _WIN32_WINNT=0x0501
+# Windows Server 2003 WINVER=0x502 _WIN32_WINNT=0x0502
+#
+# mingw32 includes  i686-w64-mingw32 and  x86_64-w64-mingw32
 
-AC_TYPE_SIGNAL
+mingw="no"
+case $host in
+  *-*-*linux*-*) 
+     AC_DEFINE([__LINUX__],1,[Linux operating system functions])
+     ;;
 
-AC_CHECK_FUNCS(sigaction)
-AC_CHECK_FUNCS(sigset)
-
-# We check for the library only if the function is not available without the library.
-AC_CHECK_FUNC(gethostbyaddr, [], [AC_CHECK_LIB(nsl, gethostbyaddr)])
-AC_CHECK_FUNC(socket, [], [AC_CHECK_LIB(socket, socket)])
-
-# Checking pcap.
-# Note: The check for -lsocket and -lnsl must go before -lpcap, because -lpcap uses those libraries.
-
-AC_ARG_WITH([pcap], 
-  [AS_HELP_STRING([--with-pcap=PATH], [Specify path to pcap library.])],
-  [
-    AC_MSG_CHECKING(for --with-pcap option)
-    case "$withval" in
-      yes|no)
-        AC_MSG_ERROR(PATH required with pcap option)
-        ;;
-      *)
-        if test '!' -d "$withval"; then
-          AC_MSG_ERROR($withval does not exist!)
-        else
-          AC_MSG_RESULT($withval)
-          if test -d "$withval/include"; then
-            CFLAGS="$CFLAGS -I$withval/include -I../$withval/include"
-            CPPFLAGS="$CPPFLAGS -I$withval/include -I../$withval/include"
-          else
-            CFLAGS="$CFLAGS -I$withval -I../$withval"
-            CPPFLAGS="$CPPFLAGS -I$withval -I../$withval"
-          fi
-          if test -d "$withval/lib"; then
-            LIBS="$LIBS -L$withval/lib -L../$withval/lib"
-          else
-            LIBS="$LIBS -L$withval -L../$withval"
-          fi
-        fi
-        ;;
-    esac
-  ]
-)
-
-# TODO: check if make install and make install-incl are both necessary.
-AC_CHECK_HEADER(pcap.h, [], [AC_MSG_ERROR([
-Can't find pcap.h; install the pcap library  (from http://www.tcpdump.org/) 
-and/or use --with-pcap to specify the path to it on your system.
-
-When installing libpcap do both 'make install' and 'make install-incl'])
-])
-
-AC_CHECK_LIB(pcap, pcap_lookupdev, [], [AC_MSG_ERROR([
-Can't find the libpcap.a file; install the pcap library (from http://www.tcpdump.org/) 
-and/or use --with-pcap to specify the path to it on your system.
-
-When installing libpcap do both 'make install' and 'make install-incl'])
-])
-
-AC_MSG_CHECKING([for special system dependencies])
-case "$host_os" in
-  linux*)
-    AC_DEFINE(DLT_NULL_BROKEN, [1], [Libpcap's DLT_NULL seems to be broken in Linux.])
-    AC_MSG_RESULT([Linux])
-    ;;
-  *)
-    AC_MSG_RESULT([none])
-    ;;
+  *-*-mingw32*)   
+     LIBS="-lws2_32 -lgdi32 $LIBS"  # previously had -liberty 
+     CPPFLAGS="-DUNICODE -D_UNICODE -D__MSVCRT_VERSION__=0x0601 -DWINVER=0x0500 -D_WIN32_WINNT=0x0500 -DHAVE_STRUCT_TIMESPEC $CPPFLAGS"
+     CXXFLAGS="$CXXFLAGS -Wno-format "  # compiler mingw-4.3.0 is broken on I64u formats
+     CFLAGS="$CFLAGS --static"
+     CXXFLAGS="$CXXFLAGS --static"
+     LDFLAGS="$LDFLAGS -shared-libgcc" # allows exiv2 to throw an exception that's caught elsewhere
+     mingw="yes"
+     ;;		 		     
 esac
 
-# Write generated configuration file
-AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile doc/tcpflow.1])
+if test x"${mingw}" == "xno" ; then
+  # Bring additional directories where things might be found into our
+  # search path. I don't know why autoconf doesn't do this by default
+  for spfx in /usr/local /opt/local /sw /usr/local/ssl; do
+    AC_MSG_NOTICE([checking ${spfx}/include])
+    if test -d ${spfx}/include; then
+        CPPFLAGS="-I${spfx}/include $CPPFLAGS"
+        LDFLAGS="-L${spfx}/lib $LDFLAGS"
+        AC_MSG_NOTICE([ *** ADDING ${spfx}/include to CPPFLAGS *** ])
+        AC_MSG_NOTICE([ *** ADDING ${spfx}/lib to LDFLAGS *** ])
+    fi
+  done
+  AC_MSG_NOTICE([ CPPFLAGS = ${CPPFLAGS} ])        
+  AC_MSG_NOTICE([ LDFLAGS = ${LDFLAGS} ])        
+fi
+
+if test -r /bin/uname.exe ; then
+  if test `uname -o` == "Msys" ; then
+    AC_MSG_NOTICE([Compiling with Msys. Setting flags appropriately.])
+    LIBS="$LIBS -lws2_32 -lgdi32"
+    LDFLAGS="$LDFLAGS -Wl,--enable-auto-import"
+  fi
+fi
+
+################################################################
+#
+# Enable all the compiler debugging we can find
+#
+# This is originally from PhotoRec, but modified substantially by Simson
+# Figure out which flags we can use with the compiler. 
+#
+# These I don't like:
+# -Wdeclaration-after-statement -Wconversion
+# doesn't work: -Wunreachable-code 
+# causes configure to crash on gcc-4.2.1: -Wsign-compare-Winline 
+# causes warnings with unistd.h:  -Wnested-externs 
+# Just causes too much annoyance: -Wmissing-format-attribute 
+
+# Check GCC
+WARNINGS_TO_TEST="-MD -D_FORTIFY_SOURCE=2 -Wpointer-arith -Wmissing-declarations -Wmissing-prototypes \
+    -Wshadow -Wwrite-strings -Wcast-align -Waggregate-return \
+    -Wbad-function-cast -Wcast-qual -Wundef -Wredundant-decls -Wdisabled-optimization \
+    -Wfloat-equal -Wmultichar -Wc++-compat -Wmissing-noreturn "
+
+if test $mingw = "no" ; then
+  # add the warnings we do not want to do on mingw
+  WARNINGS_TO_TEST="$WARNINGS_TO_TEST -Wall -Wstrict-prototypes"
+fi
+
+echo "Warnings to test: $WARNINGS_TO_TEST"
+
+for option in $WARNINGS_TO_TEST
+do
+  SAVE_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $option"
+  AC_MSG_CHECKING([whether gcc understands $option])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[]])],
+      [has_option=yes],
+      [has_option=no; CFLAGS="$SAVE_CFLAGS"])
+  AC_MSG_RESULT($has_option)
+  unset has_option
+  unset SAVE_CFLAGS
+  if test $option = "-Wmissing-format-attribute" ; then
+    AC_DEFINE(HAVE_MISSING_FORMAT_ATTRIBUTE_WARNING,1,
+		[Indicates that we have the -Wmissing-format-attribute G++ warning])
+  fi
+done
+unset option
+
+
+# Check G++
+# We don't use these warnings:
+# -Waggregate-return -- aggregate returns are GOOD; they simplify code design
+# We can use these warnings after ZLIB gets upgraded:
+# -Wundef  --- causes problems with zlib
+# -Wcast-qual 
+# -Wmissing-format-attribute  --- Just too annoying
+AC_LANG_PUSH(C++)
+WARNINGS_TO_TEST="-Wall -MD -D_FORTIFY_SOURCE=2 -Wpointer-arith \
+    -Wshadow -Wwrite-strings -Wcast-align  \
+    -Wredundant-decls -Wdisabled-optimization \
+    -Wfloat-equal -Wmultichar -Wmissing-noreturn \
+    -Wstrict-null-sentinel -Woverloaded-virtual -Wsign-promo"
+
+if test $mingw = "no" ; then
+  # add the warnings we don't want to do on mingw
+  WARNINGS_TO_TEST="$WARNINGS_TO_TEST  -Weffc++"
+fi
+
+for option in $WARNINGS_TO_TEST
+do
+  SAVE_CXXFLAGS="$CXXFLAGS"
+  CXXFLAGS="$CXXFLAGS $option"
+  AC_MSG_CHECKING([whether g++ understands $option])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[]])],
+      [has_option=yes],
+      [has_option=no; CXXFLAGS="$SAVE_CXXFLAGS"])
+  AC_MSG_RESULT($has_option)
+  unset has_option
+  unset SAVE_CXXFLAGS
+done
+unset option
+AC_LANG_POP()    
+
+
+
+################################################################
+# DFXML support
+AC_CHECK_HEADERS([sys/cdefs.h sys/resource.h pwd.h sys/utsname.h])
+AC_CHECK_FUNCS([localtime_r getuid gethostname getwpuid getrusage mkstemp vasprintf])
+
+# Determine UTC date offset
+CPPFLAGS="$CPPFLAGS -DUTC_OFFSET=`date +%z`"
+
+# Do we have the CPUID instruction?
+AC_TRY_COMPILE([#define cpuid(id) __asm__( "cpuid" : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx) : "a"(id), "b"(0), "c"(0), "d"(0))],
+			[unsigned long eax, ebx, ecx, edx;cpuid(0);],
+			have_cpuid=yes,
+			have_cpuid=no)
+if test "$have_cpuid" = yes; then
+ AC_DEFINE(HAVE_ASM_CPUID, 1, [define to 1 if __asm__ CPUID is available])
+fi
+
+# Does GCC have the diagnostic pragma?
+AC_TRY_COMPILE([#pragma GCC diagnostic ignored "-Wredundant-decls"],
+    	       [],
+	       AC_DEFINE([GNUC_HAS_DIAGNOSTIC_PRAGMA],[1],[GCC supports #pragma GCC diagnostic]),
+	       )
+
+
+################################################################
+# PTHREAD support
+# With special nods to compiling under mingw
+
+if test  x"$mingw" = x"yes";  then
+  AC_DEFINE([HAVE_STRUCT_TIMESPEC],1,[Required for mingw])
+  CFLAGS="$CFLAGS -mthreads "
+  CPPFLAGS="-DPTW32_STATIC_LIB $CPPFLAGS"
+  CXXFLAGS="$CXXFLAGS -mthreads "
+  AC_DEFINE(HAVE_PTHREAD,1,[Defined to POSIX threads for mingw])
+else
+  m4_include([m4/ax_pthread.m4])
+  AX_PTHREAD([
+    echo Using settings from AX_PTHREAD 
+    LIBS="$PTHREAD_LIBS $LIBS"
+    CFLAGS="  $PTHREAD_CFLAGS $CFLAGS"
+    CXXFLAGS="$PTHREAD_CFLAGS $CXXFLAGS "
+    CPPFLAGS="$PTHREAD_CFLAGS $CPPFLAGS "
+    CC="$PTHREAD_CC"
+  ])
+fi
+
+AC_CHECK_HEADERS([pthread.h])
+AC_CHECK_LIB([pthreadGC2],[pthread_create])
+
+################################################################
+## specific code goes here.
+
+################################################################
+# Specify our other headers
+
+AC_HEADER_STDC
+AC_CHECK_HEADERS([\
+	string.h \
+	strings.h sys/cdefs.h sys/resource.h sys/types.h \
+	sys/socket.h \
+	unistd.hsys/bitypes.h \
+	arpa/inet.h \
+	fcntl.h \
+	semaphore.h \
+	inttypes.h \
+	netinet/in.h netinet/tcp.h netinet/in_systm.h netinet/ip.h \
+	netinet/if_ether.h \
+	pcap.h \
+	pcap/pcap.h \
+	linux/if_ether.h signal.h])
+
+# This is to get net/if.h to compile
+AC_CHECK_HEADERS([net/if_var.h net/if.h], [], [],
+[[
+#if HAVE_NET_IF_VAR_H
+#include <net/if_var.h>
+#endif
+]])
+ 
+AC_CHECK_FUNCS([sigaction sigset])
+
+
+############## drop optimization flags if requested ################
+AC_ARG_WITH(noopt, AC_HELP_STRING([--with-noopt], [Drop -O C flags]))
+if test x"${AFF_NOOPT}" != "x" ; then
+   with_noopt="yes";
+fi
+
+if test "${with_noopt}" = "yes" ; then
+  CFLAGS=`echo "$CFLAGS" | sed s/-O[[0-9]]//`             # note the double quoting! 
+  CXXFLAGS=`echo "$CXXFLAGS" | sed s/-O[[0-9]]//`
+fi
+
 AC_OUTPUT

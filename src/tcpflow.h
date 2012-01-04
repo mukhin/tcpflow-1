@@ -5,6 +5,9 @@
  * This source code is under the GNU Public License (GPL).  See
  * LICENSE for details.
  *
+ * $Id: tcpflow.h,v 1.10 2001/08/08 19:39:40 jelson Exp $
+ *
+ * $Log: tcpflow.h,v $
  * Revision 1.10  2001/08/08 19:39:40  jelson
  * ARGH!  These are changes that made up tcpflow 0.20, which for some reason I
  * did not check into the repository until now.  (Which of couse means
@@ -36,12 +39,11 @@
 #ifndef __TCPFLOW_H__
 #define __TCPFLOW_H__
 
-#ifdef HAVE_CONFIG_H
-#include "conf.h"
-#endif
-
+#include "config.h"
 #include "sysdep.h"
+#include "xml.h"
 
+extern xml *xreport;
 
 #ifndef __SYSDEP_H__
 #error something is messed up
@@ -52,95 +54,69 @@
 #define DEFAULT_DEBUG_LEVEL 1
 #define MAX_FD_GUESS        64
 #define NUM_RESERVED_FDS    5     /* number of FDs to set aside */
-#define HASH_SIZE           1009  /* prime number near 1000 */
 #define SNAPLEN             65536 /* largest possible MTU we'll see */
 
+#include <iostream>
 
-/**************************** Structures **********************************/
-
-typedef struct {
-  u_int32_t src;		/* Source IP address */
-  u_int32_t dst;		/* Destination IP address */
-  u_int16_t sport;		/* Source port number */
-  u_int16_t dport;		/* Destination port number */
-} flow_t;
-
-
-typedef struct flow_state_struct {
-  struct flow_state_struct *next; /* Link to next one */
-  flow_t flow;			/* Description of this flow */
-  tcp_seq isn;			/* Initial sequence number we've seen */
-  FILE *fp;			/* Pointer to file storing this flow's data */
-  long pos;			/* Current write position in fp */
-  int flags;			/* Don't save any more data from this flow */
-  int last_access;		/* "Time" of last access */
-} flow_state_struct;
-
-#define FLOW_FINISHED		(1 << 0)
-#define FLOW_FILE_EXISTS	(1 << 1)
-
-typedef struct flow_state_struct flow_state_t;
-
+#include "flow.h"
   
 /***************************** Macros *************************************/
-
-#define MALLOC(type, num)  (type *) check_malloc((num) * sizeof(type))
 
 #ifndef __MAIN_C__
 extern int debug_level;
 #endif
 
 #define DEBUG(message_level) if (debug_level >= message_level) debug_real
-
-#define HASH_FLOW(flow) ( \
-( (flow.sport & 0xff) | ((flow.dport & 0xff) << 8) | \
-  ((flow.src & 0xff) << 16) | ((flow.dst & 0xff) << 24) \
-) % HASH_SIZE)
-
 #define IS_SET(vector, flag) ((vector) & (flag))
 #define SET_BIT(vector, flag) ((vector) |= (flag))
 
 
 /************************* Function prototypes ****************************/
 
-/* util.c */
-char *copy_argv(char *argv[]);
-void init_debug(char *argv[]);
-void *check_malloc(size_t size);
-char *flow_filename(flow_t flow);
-int get_max_fds(void);
-void format_timestamp(char* tm_buffer, int tm_buffer_length, struct timeval* tv, int f_datetime);
-RETSIGTYPE (*portable_signal(int signo, RETSIGTYPE (*func)(int)))(int);
-void debug_real(char *fmt, ...)
-#ifdef __GNUC__
-                __attribute__ ((format (printf, 1, 2)))
-#endif
-;
-void die(char *fmt, ...)
-#ifdef __GNUC__
-                __attribute__ ((format (printf, 1, 2)))
-#endif
-;
+/* datalink.cpp - callback for libpcap */
+pcap_handler find_handler(int datalink_type, char *device); // callback for pcap
 
-/* datalink.c */
-pcap_handler find_handler(int datalink_type, char *device);
-
-/* tcpip.c */
-void process_ip(const u_char *data, u_int32_t length, struct timeval* tv);
-void process_tcp(const u_char *data, u_int32_t length, u_int32_t src, u_int32_t dst, struct timeval* tv);
-void print_packet(flow_t flow, const u_char *data, u_int32_t length, const char* tm_buffer);
-void store_packet(flow_t flow, const u_char *data, u_int32_t length, u_int32_t seq);
-u_char *do_formatting(const u_char *data, u_int32_t length, u_int32_t *b_length, const char* tm_buffer);
-u_char *print_time(const u_char *data, u_int32_t length, u_int32_t *b_length, const char* tm_buffer);
-
-/* flow.c */
-void init_flow_state();
-flow_state_t *find_flow_state(flow_t flow);
-flow_state_t *create_flow_state(flow_t flow, tcp_seq isn);
-FILE *open_file(flow_state_t *flow_state);
-int close_file(flow_state_t *flow_state);
+/* flow.cpp - handles the flow database */
+void init_tcpip();
 void sort_fds();
 void contract_fd_ring();
+void flow_close_all();
+
+/* main.cpp - CLI */
+extern const char *progname;
+extern int console_only;
+extern int suppress_header;
+extern uint64_t bytes_per_flow;
+extern int strip_nonprint;
+extern int use_color;
+extern const char *outdir;		/* output directory */
+extern u_int min_skip;
+extern bool opt_format_connection_counter;
+extern bool opt_format_timestamp;
+
+#ifdef HAVE_PTHREAD
+#include <semaphore.h>
+extern sem_t *semlock;
+#endif
+
+/* tcpip.c - implements tcpip */
+void process_ip(const struct timeval *ts,const u_char *data, u_int32_t length,int32_t vlan);
+
+/* util.c - utility functions */
+void init_debug(char *argv[]);
+int get_max_fds(void);
+void (*portable_signal(int signo, void (*func)(int)))(int);
+void debug_real(const char *fmt, ...)
+#ifdef __GNUC__
+                __attribute__ ((format (printf, 1, 2)))
+#endif
+;
+void die(const char *fmt, ...)
+#ifdef __GNUC__
+                __attribute__ ((format (printf, 1, 2)))
+#endif
+;
+
 
 
 #endif /* __TCPFLOW_H__ */

@@ -1,4 +1,4 @@
-.\"$Id$"
+.\"$Id: tcpflow.1.in,v 1.5 2001/02/26 23:01:30 jelson Exp $"
 .TH tcpflow 1 "20 April 1999" "tcpflow @VERSION@" "tcpflow @VERSION@"
 .SH NAME
 tcpflow \- TCP flow recorder 
@@ -6,7 +6,7 @@ tcpflow \- TCP flow recorder
 .na
 .B tcpflow
 [\c
-.BI \-chpsvto\fR\c
+.BI \-cCehpsv\fR\c
 ]
 [\c
 .BI \-b \ max_bytes\fR\c
@@ -59,9 +59,14 @@ unlimited number of bytes per flow.
 .B \-c
 Console print.  Print the contents of packets to stdout as they
 are received, without storing any captured data to files (implies
+.TP
+.B \-C
+Console print without the packet source and destination details being printed.  Print the contents of packets to stdout as they
+are received, without storing any captured data to files (implies
+.B \-e
+When outputting to the console each flow will be output in different colors
+(blue for client to server flows, red for server to client flows, green for undecided flows).
 .B -s
-.B -t
-.B -o
 ).
 .TP
 .B \-d
@@ -119,17 +124,9 @@ option should be used to set the snaplen to the MTU of the interface
 (e.g., 1500) while capturing packets.
 .TP
 .B \-s
-Convert all non-printable characters to the
+Strip non-printables.  Convert all non-printable characters to the
 "." character before printing packets to the console or storing them
 to a file.
-.TP
-.B \-o
-Strip end-of-line symbols.  Convert all end-of-line symbols to the
-"." character before printing packets to the console or storing them
-to a file.
-.TP
-.B \-t
-Add current timetamp to the output.
 .TP
 .B \-v
 Verbose operation.  Verbosely describe tcpflow's operation.
@@ -541,12 +538,13 @@ libpcap when using the loopback interface ("localhost").  When
 listening to the Linux loopback interface, selective packet filtering
 is not possible; all TCP flows on the localhost interface will be
 recorded.
-.SH AUTHOR
+.SH AUTHORS
 Jeremy Elson <jelson@circlemud.org>
+Simson L. Garfinkel <simsong@acm.org> (maintainer)
 .LP
 The current version of this software is available at
 .RS
-.I http://www.circlemud.org/~jelson/software/tcpflow
+.I http://www.afflib.org/
 .RE
 .SH "SEE ALSO"
 tcpdump(1), nit(4P), bpf(4), pcap(3)

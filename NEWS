@@ -1,13 +1,78 @@
-Version 0.21b (September 12, 2010):
+Version 1.1.0-beta1 4 January 2012
 
-* Following options were added by Andrey Mukhin <a.mukhin77@gmail.com>:
-  -t -- add time to the output
-  -x -- add date & time to the output
-  -o -- convert end-of-line characters to '.'
+Announcing tcpflow version 1.1 (beta 1).  Version 1.1 represents a
+significant rewrite of tcpflow. All users are encouraged to evaluate
+it; a final release will be made within the next two weeks.
+
+Significant changes include:
+
+* Entire code base migrated to C++ ; code generally
+  improved. tcpflow's original hash table has been replaced with an
+  STL map which should offer significantly more
+  scalability. Eventually tcpflow will expire out old
+  connections. This will finally end the program's memory-hogging
+  problem. 
+
+* Multiple connections with the same (source/destination) are now
+  detected and stored in different files. This is significant, as the
+  previous implementation would make a single file 1-2GB in
+  length. Additional files have the same filename and a "c0001",
+  "c0002" appended.
+
+* Filenames may now be prefixed with a unix time_t of the time that
+  the connection was first seen.
+
+* The following options are now implemented:
+
+  -o outdir --- now works (previously was not implemented)
+  -X xmfile --- now reports execution results in a DFXML
+                file. (Version 1.1 will include complete notion in the XML file of
+                every TCP connection as a DFXML <fileobject>
+  -Fc       --- Every file has the 'cXXXX' postfix, rather than just
+                the files with duplicate source/destination.
+  -Ft       --- Every file has the <time_t>T prefix.
+  -mNNNN    --- Specifies the minimum number of bytes that need to be
+                skipped in a TCP connection before a new 
+  -Lname    --- use the named semaphore 'name' to prevent multiple tcpflow 
+                processes printing to standard output from overprinting each other.
+
+Other improvements from the widely available code base include:
+
+* Support for IPv6
+
+* Support for VLANs
+
+* The default filter which was causing problems under MacOS has been removed.
+
+tcpflow can be downloaded from:
+	http://afflib.org/
+	http://afflib.org/software/tcpflow
 
 
-Version 0.21 
+Finally, becuase the previous maintainer had lost control of the old
+tcpflow mailing list, a new one has been created at Google Groups. You
+can subscribe at:
 
+    http://groups.google.com/group/tcpflow-users
+
+
+
+Version 1.0.4 November 24, 2011
+* Default fitler changed to ""; previous default filter was causing problems on macs.
+
+Version 1.0.2 September 30, 2011
+* IPv6 code added
+
+Version 1.0.0 January 2011
+* Updated to support VLANs. VLAN packets are marked by hex 0x8100 following
+  the destination and source mac addresses, followed by the 16-bit VLAN address,
+  followed by 0x0800 marking the beginning of the traditional IP header.
+
+Version 0.30 October 2007
+* Simson Garfinkel <simsong@acm.org> is now the maintainer of this package
+* Modified to set the time of each tcpflow with the time of the first packet.
+* Created a regression test, so "make check" and "make distcheck" now work.
+* Updated to modern autoconf tools.
 
 Version 0.20 (February 26, 2001):
 
