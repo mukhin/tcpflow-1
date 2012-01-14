@@ -55,9 +55,6 @@
 #include <iostream>
 /*************************************************************************/
 
-/* convert all non-printable characters to '.' (period).  not
- * thread-safe, obviously, but neither is most of the rest of this. */
-u_char *do_formatting(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer);
 
 /* convert all non-printable characters to '.' (period).  not
  * thread-safe, obviously, but neither is most of the rest of this.
@@ -81,7 +78,40 @@ static u_char *do_strip_nonprint(const u_char *data, u_int32_t length)
     return buf;
 }
 
+/* convert all non-printable characters to '.' (period).  not
+ * thread-safe, obviously, but neither is most of the rest of this. */
+u_char *do_formatting(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer)
+{
+  u_int32_t tmp_length = 0;
+  u_int32_t size_of_tm_buffer = strlen(tm_buffer);
 
+  static u_char buf[SNAPLEN];
+  u_char *write_ptr;
+
+  write_ptr = buf;
+  while (length) {
+    if ((strip_nonprint && !(isprint(*data) || *data == '\n' || *data == '\r'))
+      || (strip_nr && (*data == '\n' || *data == '\r'))) {
+      *write_ptr = '.';
+    }
+    else {
+      *write_ptr = *data;
+    }
+    write_ptr++;
+    tmp_length++;
+    if (!strip_nr && ((print_time_per_line || print_datetime_per_line) && (*data == '\n'))) {
+      memcpy(write_ptr, tm_buffer,size_of_tm_buffer);
+      write_ptr += size_of_tm_buffer;
+      tmp_length += size_of_tm_buffer;
+    }
+    data++;
+    length--;
+  }
+
+  *b_length = tmp_length;
+
+  return buf;
+}
 
 /* print the contents of this packet to the console */
 void tcpip::print_packet(const u_char *data, u_int32_t length, const char* tm_buffer)
@@ -447,41 +477,3 @@ void process_ip(const struct timeval *ts,const u_char *data, u_int32_t caplen,in
 	process_ip4(ts,data, caplen,vlan);
     }
 }
-
- 
-/* convert all non-printable characters to '.' (period).  not
- * thread-safe, obviously, but neither is most of the rest of this. */
-u_char *do_formatting(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer)
-{
-  u_int32_t tmp_length = 0;
-  u_int32_t size_of_tm_buffer = strlen(tm_buffer);
-
-  static u_char buf[SNAPLEN];
-  u_char *write_ptr;
-
-  write_ptr = buf;
-  while (length) {
-    if ((strip_nonprint && !(isprint(*data) || *data == '\n' || *data == '\r'))
-      || (strip_nr && (*data == '\n' || *data == '\r'))) {
-      *write_ptr = '.';
-    }
-    else {
-      *write_ptr = *data;
-    }
-    write_ptr++;
-    tmp_length++;
-    if (!strip_nr && ((print_time_per_line || print_datetime_per_line) && (*data == '\n'))) {
-      memcpy(write_ptr, tm_buffer,size_of_tm_buffer);
-      write_ptr += size_of_tm_buffer;
-      tmp_length += size_of_tm_buffer;
-    }
-    data++;
-    length--;
-  }
-
-  *b_length = tmp_length;
-
-  return buf;
-}
-
-
