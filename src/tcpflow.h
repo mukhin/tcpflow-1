@@ -93,6 +93,9 @@ extern const char *outdir;		/* output directory */
 extern u_int min_skip;
 extern bool opt_format_connection_counter;
 extern bool opt_format_timestamp;
+extern int print_time_per_line;
+extern int print_datetime_per_line;
+extern int strip_nr;
 
 #ifdef HAVE_PTHREAD
 #include <semaphore.h>

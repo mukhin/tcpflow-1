@@ -28,6 +28,9 @@ int use_color = 0;
 u_int min_skip  = 1000000;
 bool opt_format_connection_counter = false;
 bool opt_format_timestamp = false;
+int print_time_per_line = 0;
+int print_datetime_per_line = 0;
+int strip_nr = 0;
 
 char error[PCAP_ERRBUF_SIZE];
 const char *outdir = ".";
@@ -61,7 +64,10 @@ void print_usage()
     fprintf(stderr, "        -L: lock; specifies that writes are locked using a named semaphore\n");
     fprintf(stderr, "        -p: don't use promiscuous mode\n");
     fprintf(stderr, "        -r: read packets from tcpdump output file\n");
+    fprintf(stderr, "        -S: strip end-of-line characters (change to '.')\n");
     fprintf(stderr, "        -s: strip non-printable characters (change to '.')\n");
+    fprintf(stderr, "        -T: add date & time to the output\n");
+    fprintf(stderr, "        -t: add time to the output\n");
     fprintf(stderr, "        -v: verbose operation equivalent to -d 10\n");
     fprintf(stderr, "        -o outdir   : specify output directory (default '.')\n");
     fprintf(stderr, "        -X filename : DFXML output to filename\n");
@@ -126,7 +132,7 @@ int main(int argc, char *argv[])
     bool force_binary_output = false;
     const char *xmlout = 0;
 
-    while ((arg = getopt(argc, argv, "Bb:cCd:eF:f:hi:L:m:o:pr:svX:Z")) != EOF) {
+    while ((arg = getopt(argc, argv, "Bb:cCd:eF:f:hi:L:m:o:pr:SsTtvX:Z")) != EOF) {
 	switch (arg) {
 	case 'b':
 	    if ((bytes_per_flow = atoi(optarg)) < 0) {
@@ -161,8 +167,20 @@ int main(int argc, char *argv[])
 	    break;
 	case 'm':
 	    min_skip = atoi(optarg);    DEBUG(10) ("min_skip set to %d",min_skip); break;
+  case 'S':
+    strip_nr = 1;
+    DEBUG(10) ("converting  end-of-line  characters to '.'");
+  break;
 	case 's':
 	    strip_nonprint = 1;		DEBUG(10) ("converting non-printable characters to '.'"); break;
+  case 'T':
+    print_datetime_per_line = 1;
+    DEBUG(10) ("add date & time to the output");
+  break;
+  case 't':
+    print_time_per_line = 1;
+    DEBUG(10) ("add the time to the output");
+  break;
 	case 'd':
 	    if ((debug_level = atoi(optarg)) < 0) {
 		debug_level = DEFAULT_DEBUG_LEVEL;

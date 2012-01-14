@@ -190,7 +190,7 @@ public:;
     FILE *attempt_fopen(const char *filename);
     FILE *open_file();			// opens this file and returns it
     int close_file();
-    void print_packet(const u_char *data, u_int32_t length);
+    void print_packet(const u_char *data, u_int32_t length, const char* tm_buffer);
     void store_packet(const u_char *data, u_int32_t length, u_int32_t seq, int syn_set);
 
 };

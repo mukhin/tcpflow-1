@@ -55,6 +55,15 @@
 #include <iostream>
 /*************************************************************************/
 
+static const char* tm_format_string = "%02d:%02d:%02d.%06d ";
+static const char* tm_dateformat_string = "%Y-%m-%d %X ";
+/* convert all non-printable characters to '.' (period).  not
+ * thread-safe, obviously, but neither is most of the rest of this. */
+u_char *do_formatting(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer);
+
+/* add timestamp. */
+u_char *print_time(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer);
+void format_timestamp(char* tm_buffer, int tm_buffer_length, const struct timeval* tv, int f_datetime);
 
 /* convert all non-printable characters to '.' (period).  not
  * thread-safe, obviously, but neither is most of the rest of this.
@@ -81,8 +90,8 @@ static u_char *do_strip_nonprint(const u_char *data, u_int32_t length)
 
 
 /* print the contents of this packet to the console */
-void tcpip::print_packet(const u_char *data, u_int32_t length)
-{
+void tcpip::print_packet(const u_char *data, u_int32_t length, const char* tm_buffer)
+{    
     /* green, blue, read */
     const char *color[3] = { "\033[0;32m", "\033[0;34m", "\033[0;31m" };
 
@@ -107,6 +116,10 @@ void tcpip::print_packet(const u_char *data, u_int32_t length)
 	if (dir_cs) fputs(color[1],stdout);
 	if (dir_sc) fputs(color[2],stdout);
     }
+
+  if (print_time_per_line || print_datetime_per_line) {
+    printf("%s", tm_buffer);
+  }
 
     if (suppress_header == 0) {
 	printf("%s: ", flow_pathname.c_str());
@@ -210,6 +223,7 @@ void tcpip::store_packet(const u_char *data, u_int32_t length, u_int32_t seq, in
 /*
  * Called to processes a tcp packet
  */
+#define TM_BUFFER_LENGTH 40
 
 void tcpip::process_tcp(const struct timeval *ts,const u_char *data, u_int32_t length,
 			const ipaddr &src, const ipaddr &dst,int32_t vlan,sa_family_t family)
@@ -292,14 +306,26 @@ void tcpip::process_tcp(const struct timeval *ts,const u_char *data, u_int32_t l
 	return;
     }
 
+  static char tm_buffer[TM_BUFFER_LENGTH];
+  if (print_time_per_line) {
+    format_timestamp(tm_buffer, TM_BUFFER_LENGTH, ts, 0);
+  }
+  else if (print_datetime_per_line) {
+    format_timestamp(tm_buffer, TM_BUFFER_LENGTH, ts, 1);
+  }
+
+  /* store the length of the data */
+  u_int32_t buffer_length = length;
+  data = do_formatting(data, length, &buffer_length, tm_buffer);
+
     /* strip nonprintable characters if necessary */
-    if (strip_nonprint) data = do_strip_nonprint(data, length);
+//    if (strip_nonprint) data = do_strip_nonprint(data, length);
 
     /* store or print the output */
     if (console_only) {
-	state->print_packet(data, length);
+	state->print_packet(data, buffer_length, tm_buffer);
     } else {
-	state->store_packet(data, length, seq, syn_set);
+	state->store_packet(data, buffer_length, seq, syn_set);
     }
 }
 
@@ -427,5 +453,84 @@ void process_ip(const struct timeval *ts,const u_char *data, u_int32_t caplen,in
 	process_ip4(ts,data, caplen,vlan);
     }
 }
+
  
- 
+/* convert all non-printable characters to '.' (period).  not
+ * thread-safe, obviously, but neither is most of the rest of this. */
+u_char *do_formatting(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer)
+{
+  u_int32_t tmp_length = 0;
+  u_int32_t size_of_tm_buffer = strlen(tm_buffer);
+
+  static u_char buf[SNAPLEN];
+  u_char *write_ptr;
+
+  write_ptr = buf;
+  while (length) {
+    if ((strip_nonprint && !(isprint(*data) || *data == '\n' || *data == '\r'))
+      || (strip_nr && (*data == '\n' || *data == '\r'))) {
+      *write_ptr = '.';
+    }
+    else {
+      *write_ptr = *data;
+    }
+    write_ptr++;
+    tmp_length++;
+    if (!strip_nr && ((print_time_per_line || print_datetime_per_line) && (*data == '\n'))) {
+      memcpy(write_ptr, tm_buffer,size_of_tm_buffer);
+      write_ptr += size_of_tm_buffer;
+      tmp_length += size_of_tm_buffer;
+    }
+    data++;
+    length--;
+  }
+
+  *b_length = tmp_length;
+
+  return buf;
+}
+
+/* added timestamp. */
+u_char *print_time(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer)
+{
+  static u_char buf[SNAPLEN];
+  u_char *write_ptr;
+  u_int32_t tmp_length = 0;
+  u_int32_t size_of_tm_buffer = strlen(tm_buffer);
+  write_ptr = buf;
+  while (length) {
+    *write_ptr = *data;
+    write_ptr++;
+    tmp_length++;
+    if (*data == '\n') {
+      memcpy(write_ptr, tm_buffer,size_of_tm_buffer);
+      write_ptr += size_of_tm_buffer;
+      tmp_length += size_of_tm_buffer;
+    }
+    data++;
+    length--;
+  }
+
+  *b_length = tmp_length;
+
+  return buf;
+}
+
+void format_timestamp(char* tm_buffer, int tm_buffer_length, const struct timeval* tv, int f_datetime) {
+  struct tm time_;  
+  if (tv->tv_sec == 0 && tv->tv_usec == 0) {
+    struct timeval* tv_;
+    gettimeofday(tv_, NULL);
+    time_ = *localtime(&tv_->tv_sec);
+  }
+  else {
+    time_ = *localtime(&tv->tv_sec);
+  }
+
+  if (f_datetime) {
+    strftime(tm_buffer, tm_buffer_length, tm_dateformat_string, &time_);
+  }
+  else {
+    sprintf(tm_buffer, tm_format_string, time_.tm_hour, time_.tm_min, time_.tm_sec, (int)tv->tv_usec);
+  }
+}
