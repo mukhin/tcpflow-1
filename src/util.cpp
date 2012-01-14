@@ -36,6 +36,8 @@
 
 static char *debug_prefix = NULL;
 extern int max_desired_fds;
+static const char* tm_format_string = "%02d:%02d:%02d.%06d ";
+static const char* tm_dateformat_string = "%Y-%m-%d %X ";
 
 #define BUFSIZE 1024
 
@@ -188,4 +190,23 @@ void (*portable_signal(int signo, void (*func)(int)))(int)
 #else
     return signal(signo, func);
 #endif /* HAVE_SIGACTION, HAVE_SIGSET */
+}
+
+void format_timestamp(char* tm_buffer, int tm_buffer_length, const struct timeval* tv, int f_datetime) {
+  struct tm time_;  
+  if (tv->tv_sec == 0 && tv->tv_usec == 0) {
+    struct timeval* tv_ = NULL;
+    gettimeofday(tv_, NULL);
+    time_ = *localtime(&tv_->tv_sec);
+  }
+  else {
+    time_ = *localtime(&tv->tv_sec);
+  }
+
+  if (f_datetime) {
+    strftime(tm_buffer, tm_buffer_length, tm_dateformat_string, &time_);
+  }
+  else {
+    sprintf(tm_buffer, tm_format_string, time_.tm_hour, time_.tm_min, time_.tm_sec, (int)tv->tv_usec);
+  }
 }

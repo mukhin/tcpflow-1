@@ -119,7 +119,7 @@ void die(const char *fmt, ...)
                 __attribute__ ((format (printf, 1, 2)))
 #endif
 ;
-
+void format_timestamp(char* tm_buffer, int tm_buffer_length, const struct timeval* tv, int f_datetime);
 
 
 #endif /* __TCPFLOW_H__ */

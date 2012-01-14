@@ -55,15 +55,9 @@
 #include <iostream>
 /*************************************************************************/
 
-static const char* tm_format_string = "%02d:%02d:%02d.%06d ";
-static const char* tm_dateformat_string = "%Y-%m-%d %X ";
 /* convert all non-printable characters to '.' (period).  not
  * thread-safe, obviously, but neither is most of the rest of this. */
 u_char *do_formatting(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer);
-
-/* add timestamp. */
-u_char *print_time(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer);
-void format_timestamp(char* tm_buffer, int tm_buffer_length, const struct timeval* tv, int f_datetime);
 
 /* convert all non-printable characters to '.' (period).  not
  * thread-safe, obviously, but neither is most of the rest of this.
@@ -490,47 +484,4 @@ u_char *do_formatting(const u_char *data, u_int32_t length, u_int32_t* b_length,
   return buf;
 }
 
-/* added timestamp. */
-u_char *print_time(const u_char *data, u_int32_t length, u_int32_t* b_length, const char* tm_buffer)
-{
-  static u_char buf[SNAPLEN];
-  u_char *write_ptr;
-  u_int32_t tmp_length = 0;
-  u_int32_t size_of_tm_buffer = strlen(tm_buffer);
-  write_ptr = buf;
-  while (length) {
-    *write_ptr = *data;
-    write_ptr++;
-    tmp_length++;
-    if (*data == '\n') {
-      memcpy(write_ptr, tm_buffer,size_of_tm_buffer);
-      write_ptr += size_of_tm_buffer;
-      tmp_length += size_of_tm_buffer;
-    }
-    data++;
-    length--;
-  }
 
-  *b_length = tmp_length;
-
-  return buf;
-}
-
-void format_timestamp(char* tm_buffer, int tm_buffer_length, const struct timeval* tv, int f_datetime) {
-  struct tm time_;  
-  if (tv->tv_sec == 0 && tv->tv_usec == 0) {
-    struct timeval* tv_;
-    gettimeofday(tv_, NULL);
-    time_ = *localtime(&tv_->tv_sec);
-  }
-  else {
-    time_ = *localtime(&tv->tv_sec);
-  }
-
-  if (f_datetime) {
-    strftime(tm_buffer, tm_buffer_length, tm_dateformat_string, &time_);
-  }
-  else {
-    sprintf(tm_buffer, tm_format_string, time_.tm_hour, time_.tm_min, time_.tm_sec, (int)tv->tv_usec);
-  }
-}
